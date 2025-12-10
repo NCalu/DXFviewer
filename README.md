@@ -1,6 +1,6 @@
 # DXFviewer
 
-A simple HTML page using Three.js to view DXF files.
+A simple HTML page using Three.js and dxf-parser to view DXF files.
 
 Live demo: https://dxf-viewer.ncnetic.com
 
