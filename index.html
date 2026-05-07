@@ -1,0 +1,638 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+<!-- <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"> -->
+<!-- <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"> -->
+<!-- <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"> -->
+<head>
+  <title>DXF Viewer | Free Online DXF Viewer by NCnetic</title>
+  <meta name="description" content="Free online DXF viewer to upload and visualize DXF files. No install needed — just upload your file and get the preview.">
+  <meta name="keywords" content="dxf viewer, ncnetic viewer">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <style>
+  
+      :root {
+      --bg-header: #f5f5f5;
+      --text-header: #222;
+      --bg-viewer: #eeeeee;
+      --text-viewer: #222;
+      --btn-bg: #ddd;
+      --scrollbar-bg: #ddd;
+      --scrollbar-thumb: #aaa;
+      --viewer-bg-color: #eeeeee;
+    }
+	
+    body.light {
+      --bg-header: #222;
+      --text-header: white;
+      --bg-viewer: #2c2c2c;
+      --text-viewer: white;
+      --btn-bg: #444;
+      --scrollbar-bg: #555;
+      --scrollbar-thumb: #888;
+      --viewer-bg-color: #000000;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: sans-serif;
+      overflow: hidden;
+    }
+
+    header {
+      height: 50px;
+      background-color: var(--bg-header);
+      color: var(--text-header);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+    }
+
+    header .left, header .right {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+	  justify-content: space-between;
+    }
+
+    header button {
+      background: var(--btn-bg);
+      color: var(--text-header);
+      border: none;
+      padding: 5px 10px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+	
+	.right svg {
+	  max-height: 40px; 
+	}
+	
+	.ncnetic-link {
+	  color: inherit;
+	}
+	
+	.separator {
+	  margin: 0 10px;
+	  color: #888;
+	}
+
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 34px;
+      height: 20px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: 0.4s;
+      border-radius: 50px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 12px;
+      width: 12px;
+      border-radius: 50px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: 0.4s;
+    }
+
+    input:checked + .slider {
+      background-color: #2196F3;
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(14px);
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--scrollbar-bg);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--scrollbar-thumb);
+      border-radius: 10px;
+    }
+
+    main {
+      display: flex;
+      height: calc(100% - 50px);
+      width: 100%;
+      overflow: auto;
+    }
+
+	.viewer {
+	  flex: 1 1 auto;
+	  min-width: 100px;
+	  background: var(--bg-viewer);
+	  color: var(--text-viewer);
+	  position: relative;
+	  display: flex;
+	  flex-direction: column;
+	  justify-content: flex-end;
+	  font-size: 1.2rem;
+	}
+
+	.viewer-info {
+	  position: absolute;
+	  top: 10px;
+	  right: 10px;
+	  z-index: 1;
+
+	  display: flex;
+	  flex-direction: column;
+	  align-items: flex-start;
+
+	  padding: 8px 12px;
+	  background-color: rgba(0, 0, 0, 0.3);
+	  color: var(--text-viewer);
+	  font-family: monospace;
+	  font-size: 0.85rem;
+
+	  border: 1px solid rgba(255, 255, 255, 0.2);
+	  border-radius: 4px;
+	  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+	}
+	.viewer-info span {
+	  margin-bottom: 4px;
+	}
+	
+	#viewer {
+		position: relative;
+		width: 100%;
+		height: 100%;
+	}
+
+    @media (max-width: 768px) {
+      .viewer {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body class="light">
+  <header>
+    <div class="left">
+      <button id="loadBtn">Load File</button>
+      <input type="file" id="fileInput" style="display: none;" />
+	  <span class="separator">|</span>
+	  <button id="resetViewBtn">Reset View</button>
+	  <div class="theme-toggle">
+        <label for="toggleTheme" class="switch">
+          <input type="checkbox" id="toggleTheme" checked/>
+          <span class="slider"></span>
+        </label>
+        <span>Dark Mode</span>
+      </div>
+	  <span class="separator">|</span>
+    </div>
+  </header>
+  <div class="viewer" id="viewer">
+    <div class="viewer-info" id="viewerInfo">
+      <span>MIN: <span id="min">[0.000 0.000]</span></span>
+      <span>MAX: <span id="max">[0.000 0.000]</span></span>
+    </div>
+  </div>
+</main>
+
+<script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.178.0/build/three.module.js",
+	  "three/examples/jsm/loaders/FontLoader": "https://unpkg.com/three@0.178.0/examples/jsm/loaders/FontLoader.js",
+	  "three/examples/jsm/geometries/TextGeometry": "https://unpkg.com/three@0.178.0/examples/jsm/geometries/TextGeometry.js",
+      "three/addons/": "https://unpkg.com/three@0.178.0/examples/jsm/",
+	  "dxf-parser": "https://esm.sh/dxf-parser"
+    }
+  }
+</script>
+
+<script type="module">
+
+	import * as THREE from "three";
+	import * as DXF from "dxf-parser";
+
+	import {
+		OrbitControls
+	}
+	from "three/addons/controls/OrbitControls.js";
+	
+	import { 
+		FontLoader 
+	} from 'three/examples/jsm/loaders/FontLoader';
+
+	import { 
+		TextGeometry 
+	} from 'three/examples/jsm/geometries/TextGeometry';
+
+	const viewer = document.getElementById('viewer');
+	const scene = new THREE.Scene();
+	scene.up.set(0, 0, 1);
+
+	let aspect = viewer.clientWidth / viewer.clientHeight;
+	const f0 = 20000;
+	const camera = new THREE.OrthographicCamera(
+			-f0 * aspect / 2,
+			f0 * aspect / 2,
+			f0 / 2,
+			-f0 / 2,
+			0.1,
+			2 * f0);
+	camera.up.set(0, 0, 1);
+
+	const renderer = new THREE.WebGLRenderer();
+	renderer.setSize(viewer.clientWidth, viewer.clientHeight);
+	viewer.appendChild(renderer.domElement);
+
+	const setViewerBackground = () => {
+		const bgColor = getComputedStyle(document.body).getPropertyValue('--viewer-bg-color').trim();
+		renderer.setClearColor(new THREE.Color(bgColor));
+	};
+
+	setViewerBackground();
+
+	const controls = new OrbitControls(camera, renderer.domElement);
+	controls.mouseButtons = {
+		LEFT: THREE.MOUSE.PAN,
+		MIDDLE: null,
+		RIGHT: null
+	};
+	controls.screenSpacePanning = true;
+
+	const dxfGroup = new THREE.Group();
+	scene.add(dxfGroup);
+
+	const raycaster = new THREE.Raycaster();
+	// raycaster.params.Line.threshold = 1;
+	const mouse = new THREE.Vector2();
+
+	let isMouseDown = false;
+	let mouseDownPosition = { x: 0, y: 0 };
+
+	renderer.domElement.addEventListener('mousedown', (event) => {
+		isMouseDown = true;
+		mouseDownPosition.x = event.clientX;
+		mouseDownPosition.y = event.clientY;
+	});
+
+	renderer.domElement.addEventListener('mouseup', (event) => {
+		if (!isMouseDown) return;
+		isMouseDown = false;
+	});
+
+	function resetCamera() {
+	
+		let box = new THREE.Box3().setFromObject(dxfGroup);
+
+		if (box.isEmpty()) {
+			box = new THREE.Box3(
+				new THREE.Vector3(-1, -1, -1),
+				new THREE.Vector3(1, 1, 1)
+			);
+		} else {
+			// box.expandByPoint(new THREE.Vector3(0, 0, 0));
+		}
+		
+		document.getElementById('min').textContent = "[" + box.min.x.toFixed(3) + " , " + box.min.y.toFixed(3) + "]";
+		document.getElementById('max').textContent = "[" + box.max.x.toFixed(3) + " , " + box.max.x.toFixed(3) + "]";
+		
+		const center = box.getCenter(new THREE.Vector3());
+		const size = box.getSize(new THREE.Vector3());
+		aspect = viewer.clientWidth / viewer.clientHeight;
+
+		let halfHeight, halfWidth;
+		if (size.x / size.y > aspect) {
+			halfWidth = size.x / 2;
+			halfHeight = halfWidth / aspect;
+		} else {
+			halfHeight = size.y / 2;
+			halfWidth = halfHeight * aspect;
+		}
+
+		const margin = 1.4;
+		halfWidth *= margin;
+		halfHeight *= margin;
+
+		camera.left = -halfWidth;
+		camera.right = halfWidth;
+		camera.top = halfHeight;
+		camera.bottom = -halfHeight;
+		camera.zoom = 1;
+		camera.near = -99999;
+		camera.far  = 99999;
+		camera.updateProjectionMatrix();
+
+		const maxDepth = size.z;
+		camera.position.set(center.x, center.y, center.z + maxDepth * 1.5 + 1);
+		camera.lookAt(center);
+
+		controls.target.copy(center);
+		controls.update();
+
+		renderer.setSize(viewer.clientWidth, viewer.clientHeight);
+	}
+	
+	document.getElementById("resetViewBtn").addEventListener("click", function () {
+		resetCamera();
+	});
+
+	let loadedFilename = "gcode.txt";
+	const loadBtn = document.getElementById('loadBtn');
+	const fileInput = document.getElementById('fileInput');
+	loadBtn.addEventListener('click', () => fileInput.click());
+
+	fileInput.addEventListener('change', (e) => {
+		const file = e.target.files[0];
+		if (!file) return;
+		const isDXF = file.name.toLowerCase().endsWith(".dxf");
+		if (!isDXF) return;
+		
+		dxfGroup.clear();
+		
+		loadedFilename = file.name;
+		
+		file.text().then(dxfText => {
+		
+			const parser = new DXF.DxfParser();
+			const dxf = parser.parseSync(dxfText);
+
+			for (const entity of dxf.entities) {
+				
+				let colorLayer;
+
+				if (dxf.tables?.layer?.layers && dxf.tables.layer.layers[entity.layer]) {
+					const color = dxf.tables.layer.layers[entity.layer].color;
+					colorLayer = intToHexColor(color);
+				} else {
+					// fallback blue
+					colorLayer = '#0000ff';
+				}
+				
+				const material = new THREE.LineBasicMaterial({ color: colorLayer });
+				
+				if (entity.type === "LINE") {
+					
+					const verts = entity.vertices || entity.points;
+					if (!verts || verts.length < 2) continue;
+
+					const v1 = verts[0];
+					const v2 = verts[1];
+
+					if (v1.x === undefined || v1.y === undefined) continue;
+					if (v2.x === undefined || v2.y === undefined) continue;
+
+					const geometry = new THREE.BufferGeometry().setFromPoints([
+						new THREE.Vector3(v1.x, v1.y, 0),
+						new THREE.Vector3(v2.x, v2.y, 0)
+					]);
+
+					dxfGroup.add(new THREE.Line(geometry, material));
+				}
+				else if (entity.type === "LWPOLYLINE" || entity.type === "POLYLINE") {
+
+					const verts = entity.vertices || entity.points;
+					if (!verts || verts.length === 0) continue;
+
+					const points = [];
+
+					const count = verts.length;
+					const isClosed = entity.shape === true;
+
+					for (let i = 0; i < count; i++) {
+						const v1 = verts[i];
+						const v2 = verts[(i + 1) % count];
+
+						if (v1.x === undefined || v1.y === undefined) continue;
+
+						const p1 = new THREE.Vector3(v1.x, v1.y, 0);
+						points.push(p1);
+
+						if (i === count - 1 && !isClosed) break;
+
+						const bulge = v1.bulge || 0;
+
+						if (bulge === 0) continue;
+
+						if (v2.x === undefined || v2.y === undefined) continue;
+
+						const p2 = new THREE.Vector3(v2.x, v2.y, 0);
+
+						const dx = p2.x - p1.x;
+						const dy = p2.y - p1.y;
+						const chordLength = Math.sqrt(dx * dx + dy * dy);
+
+						const theta = 4 * Math.atan(bulge);
+
+						const radius = chordLength / (2 * Math.sin(theta / 2));
+
+						const mx = (p1.x + p2.x) / 2;
+						const my = (p1.y + p2.y) / 2;
+
+						const h = radius * Math.cos(theta / 2);
+
+						let nx = -dy / chordLength;
+						let ny = dx / chordLength;
+
+						if (bulge < 0) {
+							nx = -nx;
+							ny = -ny;
+						}
+
+						const cx = mx + nx * h * Math.sign(bulge);
+						const cy = my + ny * h * Math.sign(bulge);
+
+						const a1 = Math.atan2(p1.y - cy, p1.x - cx);
+						let a2 = Math.atan2(p2.y - cy, p2.x - cx);
+
+						if (bulge > 0 && a2 < a1) a2 += Math.PI * 2;
+						if (bulge < 0 && a2 > a1) a2 -= Math.PI * 2;
+
+						const degStep = 5.625;
+						const radStep = THREE.MathUtils.degToRad(degStep);
+
+						const start = a1;
+						const end = a2;
+
+						const step = (end > start) ? radStep : -radStep;
+						for (let t = start + step; 
+							 (step > 0 ? t < end : t > end); 
+							 t += step) {
+							points.push(new THREE.Vector3(
+								cx + Math.cos(t) * Math.abs(radius),
+								cy + Math.sin(t) * Math.abs(radius),
+								0
+							));
+						}
+					}
+
+					if (isClosed) points.push(points[0].clone());
+
+					if (points.length >= 2) {
+						const geometry = new THREE.BufferGeometry().setFromPoints(points);
+						dxfGroup.add(new THREE.Line(geometry, material));
+					}
+				}
+				else if (entity.type === "CIRCLE") {
+
+					if (!entity.center || entity.radius === undefined) continue;
+
+					const radius = entity.radius;
+					const segments = 64;
+					const pts = [];
+
+					for (let i = 0; i <= segments; i++) {
+						const a = (i / segments) * Math.PI * 2;
+						pts.push(new THREE.Vector3(
+							entity.center.x + Math.cos(a) * radius,
+							entity.center.y + Math.sin(a) * radius,
+							0
+						));
+					}
+
+					const geometry = new THREE.BufferGeometry().setFromPoints(pts);
+					dxfGroup.add(new THREE.LineLoop(geometry, material));
+				}
+				else if (entity.type === "ARC") {
+
+					if (!entity.center || entity.radius === undefined) continue;
+
+					const cx = entity.center.x;
+					const cy = entity.center.y;
+					const r  = entity.radius;
+
+					let start = entity.startAngle;
+					let end   = entity.startAngle + entity.angleLength;
+
+					if (start > end) start -= Math.PI * 2;
+
+					const segments = 64;
+					const pts = [];
+
+					for (let i = 0; i <= segments; i++) {
+						const t = start + (i / segments) * (end - start);
+						pts.push(new THREE.Vector3(
+							cx + Math.cos(t) * r,
+							cy + Math.sin(t) * r,
+							0
+						));
+					}
+
+					const geometry = new THREE.BufferGeometry().setFromPoints(pts);
+					dxfGroup.add(new THREE.Line(geometry, material));
+				}				
+				else if (entity.type === "SPLINE") {
+
+					if (!entity.controlPoints || entity.controlPoints.length === 0) continue;
+
+					const curve = new THREE.CatmullRomCurve3(
+						entity.controlPoints.map(p => new THREE.Vector3(p.x, p.y, 0))
+					);
+
+					const pts = curve.getPoints(100);
+					const geometry = new THREE.BufferGeometry().setFromPoints(pts);
+
+					dxfGroup.add(new THREE.Line(geometry, material));
+				}
+				else if (entity.type === "TEXT") {
+					
+					const loader = new FontLoader();
+					loader.load(
+						'https://unpkg.com/three@0.178.0/examples/fonts/helvetiker_regular.typeface.json',
+						font => {
+							const txt = entity.text;
+							const tg = new TextGeometry(txt, {
+								font,
+								size: entity.textHeight || 10,
+								height: 0.01
+							});
+							const mesh = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ color: colorLayer }));
+							
+							mesh.position.set(entity.startPoint.x, entity.startPoint.y, 0);
+
+							if (entity.rotation) mesh.rotation.z = THREE.MathUtils.degToRad(entity.rotation);
+							
+							dxfGroup.add(mesh);
+						}
+					);
+				}
+			}
+
+			resetCamera();
+		});
+	});
+
+	function intToHexColor(intColor) {
+		const b = intColor & 0xFF;
+		const g = (intColor >> 8) & 0xFF;
+		const r = (intColor >> 16) & 0xFF;
+
+		return (r << 16 | g << 8 | b);
+	}
+
+	renderer.domElement.addEventListener('dblclick', (event) => {
+		resetCamera();
+	});
+	
+	const toggleTheme = document.getElementById('toggleTheme');
+
+	function applyTheme(isLight) {
+		toggleTheme.checked = isLight;
+		document.body.classList.toggle('dark', !isLight);
+		document.body.classList.toggle('light', isLight);
+		setViewerBackground();
+	}
+
+	const savedTheme = localStorage.getItem('theme');
+	const isLight = savedTheme ? savedTheme === 'light' : toggleTheme.checked;
+	applyTheme(isLight);
+
+	toggleTheme.addEventListener('change', function () {
+		const isLight = this.checked;
+		localStorage.setItem('theme', isLight ? 'light' : 'dark');
+		applyTheme(isLight);
+	});
+	
+	function animate() {
+		requestAnimationFrame(animate);
+		controls.update();
+		renderer.render(scene, camera);
+	}
+
+	resetCamera();
+	animate();
+	
+  </script>
+</body>
+</html>
