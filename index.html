@@ -168,7 +168,7 @@
 	.viewer-info {
 	  position: absolute;
 	  top: 10px;
-	  right: 10px;
+	  left: 10px;
 	  z-index: 1;
 
 	  display: flex;
@@ -190,10 +190,22 @@
 	}
 	
 	#viewer {
-		position: relative;
-		width: 100%;
-		height: 100%;
+	  position: relative;
+      width: 100%;
+      height: 100%;
 	}
+	
+	#layersPanel {
+	  font-family: monospace;
+	  font-size: 12px;
+	}
+	
+    #layersPanel label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 2px;
+    }
 
     @media (max-width: 768px) {
       .viewer {
@@ -269,8 +281,8 @@
   </header>
   <div class="viewer" id="viewer">
     <div class="viewer-info" id="viewerInfo">
-      <span>MIN: <span id="min">[0.000 0.000]</span></span>
-      <span>MAX: <span id="max">[0.000 0.000]</span></span>
+      <div id="layersPanel"></div>
+														   
     </div>
   </div>
 </main>
@@ -341,6 +353,8 @@
 
 	const dxfGroup = new THREE.Group();
 	scene.add(dxfGroup);
+	
+	const layersMap = new Map();
 
 	const raycaster = new THREE.Raycaster();
 	// raycaster.params.Line.threshold = 1;
@@ -372,10 +386,10 @@
 		} else {
 			// box.expandByPoint(new THREE.Vector3(0, 0, 0));
 		}
-		
-		document.getElementById('min').textContent = "[" + box.min.x.toFixed(3) + " , " + box.min.y.toFixed(3) + "]";
-		document.getElementById('max').textContent = "[" + box.max.x.toFixed(3) + " , " + box.max.x.toFixed(3) + "]";
-		
+
+																											   
+																											   
+  
 		const center = box.getCenter(new THREE.Vector3());
 		const size = box.getSize(new THREE.Vector3());
 		aspect = viewer.clientWidth / viewer.clientHeight;
@@ -428,6 +442,8 @@
 		if (!isDXF) return;
 		
 		dxfGroup.clear();
+		layersMap.clear();
+		document.getElementById('layersPanel').innerHTML = '';
 		
 		loadedFilename = file.name;
 		
@@ -444,8 +460,8 @@
 					const color = dxf.tables.layer.layers[entity.layer].color;
 					colorLayer = intToHexColor(color);
 				} else {
-					// fallback
-					colorLayer = '#7F7F7F';
+					// fallback blue
+					colorLayer = '#0000ff';
 				}
 				
 				const material = new THREE.LineBasicMaterial({ color: colorLayer });
@@ -466,7 +482,9 @@
 						new THREE.Vector3(v2.x, v2.y, 0)
 					]);
 
-					dxfGroup.add(new THREE.Line(geometry, material));
+					const layerName = entity.layer || '0';
+					const layerGroup = getLayerGroup(layerName, colorLayer);
+					layerGroup.add(new THREE.Line(geometry, material));
 				}
 				else if (entity.type === "LWPOLYLINE" || entity.type === "POLYLINE") {
 
@@ -549,7 +567,9 @@
 
 					if (points.length >= 2) {
 						const geometry = new THREE.BufferGeometry().setFromPoints(points);
-						dxfGroup.add(new THREE.Line(geometry, material));
+						const layerName = entity.layer || '0';
+						const layerGroup = getLayerGroup(layerName, colorLayer);
+						layerGroup.add(new THREE.Line(geometry, material));
 					}
 				}
 				else if (entity.type === "CIRCLE") {
@@ -570,7 +590,9 @@
 					}
 
 					const geometry = new THREE.BufferGeometry().setFromPoints(pts);
-					dxfGroup.add(new THREE.LineLoop(geometry, material));
+					const layerName = entity.layer || '0';
+					const layerGroup = getLayerGroup(layerName, colorLayer);
+					layerGroup.add(new THREE.LineLoop(geometry, material));
 				}
 				else if (entity.type === "ARC") {
 
@@ -598,7 +620,9 @@
 					}
 
 					const geometry = new THREE.BufferGeometry().setFromPoints(pts);
-					dxfGroup.add(new THREE.Line(geometry, material));
+					const layerName = entity.layer || '0';
+					const layerGroup = getLayerGroup(layerName, colorLayer);
+					layerGroup.add(new THREE.Line(geometry, material));
 				}				
 				else if (entity.type === "SPLINE") {
 
@@ -611,7 +635,9 @@
 					const pts = curve.getPoints(100);
 					const geometry = new THREE.BufferGeometry().setFromPoints(pts);
 
-					dxfGroup.add(new THREE.Line(geometry, material));
+					const layerName = entity.layer || '0';
+					const layerGroup = getLayerGroup(layerName, colorLayer);
+					layerGroup.add(new THREE.Line(geometry, material));
 				}
 				else if (entity.type === "TEXT") {
 					
@@ -631,15 +657,29 @@
 
 							if (entity.rotation) mesh.rotation.z = THREE.MathUtils.degToRad(entity.rotation);
 							
-							dxfGroup.add(mesh);
+							const layerName = entity.layer || '0';
+							const layerGroup = getLayerGroup(layerName, colorLayer);
+							layerGroup.add(mesh);
 						}
 					);
 				}
 			}
 
+			buildLayersUI();
 			resetCamera();
 		});
 	});
+	
+	function getLayerGroup(layerName, color) {
+		if (!layersMap.has(layerName)) {
+			const g = new THREE.Group();
+			g.name = layerName;
+			g.userData.color = color; // store layer color
+			layersMap.set(layerName, g);
+			dxfGroup.add(g);
+		}
+		return layersMap.get(layerName);
+	}
 
 	function intToHexColor(intColor) {
 		const b = intColor & 0xFF;
@@ -671,6 +711,41 @@
 		localStorage.setItem('theme', isLight ? 'light' : 'dark');
 		applyTheme(isLight);
 	});
+	
+	function buildLayersUI() {
+		const panel = document.getElementById('layersPanel');
+		panel.innerHTML = '';
+
+		for (const [layerName, group] of layersMap.entries()) {
+			const label = document.createElement('label');
+
+			const checkbox = document.createElement('input');
+			checkbox.type = 'checkbox';
+			checkbox.checked = true;
+
+			checkbox.addEventListener('change', () => {
+				group.visible = checkbox.checked;
+			});
+
+			const colorBox = document.createElement('span');
+			colorBox.style.width = '12px';
+			colorBox.style.height = '12px';
+			colorBox.style.display = 'inline-block';
+			colorBox.style.border = '1px solid #555';
+			colorBox.style.backgroundColor = `#${group.userData.color
+				.toString(16)
+				.padStart(6, '0')}`;
+
+			const text = document.createElement('span');
+			text.textContent = layerName;
+
+			label.appendChild(checkbox);
+			label.appendChild(colorBox);
+			label.appendChild(text);
+
+			panel.appendChild(label);
+		}
+	}
 	
 	function animate() {
 		requestAnimationFrame(animate);
